@@ -1,5 +1,5 @@
 import { data } from "@/data/todo";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Pressable, Text, TextInput, View,StyleSheet, FlatList } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -7,9 +7,11 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import {Inter_500Medium, useFonts} from "@expo-google-fonts/inter"
 import { ThemeContext } from "@/context/ThemeContext";
 import Octicons from '@expo/vector-icons/Octicons';
-
+import  Animated, {LinearTransition} from "react-native-reanimated";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import {StatusBar} from "expo-status-bar"
 export default function Index() {
-  const [todos, setTodos] = useState(data.sort((a, b) => b.id - a.id));
+  const [todos, setTodos] = useState([]);
   const [text,setText] = useState("");
   const {theme,colorScheme,setColorScheme} = useContext(ThemeContext);
 
@@ -17,6 +19,40 @@ export default function Index() {
   const [loaded,error] = useFonts({
     Inter_500Medium
   })
+useEffect(()=>{
+ const fetchData=async()=>{
+  try{
+    const jsonValue = await AsyncStorage.getItem('TodoApp')
+    const stoarageTodos = jsonValue != null ? JSON.parse(jsonValue) : null;
+    if(stoarageTodos && stoarageTodos.length ){
+        setTodos(stoarageTodos.sort((a, b) => b.id - a.id))
+    }
+    else {
+      setTodos(data.sort((a, b) => b.id - a.id))
+    }
+  }
+  catch(err){
+    console.log(err)
+  }
+ }
+ fetchData()
+},[data])
+
+
+useEffect(()=>{
+const storedData = async()=>{
+  try{
+    const jsonValue = JSON.stringify(todos)
+    await AsyncStorage.setItem('TodoApp', jsonValue)
+  }
+  catch(err){
+    console.log(err)
+  }
+}
+
+  storedData()
+
+},[todos])
 
   if(!loaded && !error){
     return null;
@@ -81,12 +117,15 @@ export default function Index() {
               }
             </Pressable>
         </View>
-        <FlatList
+        <Animated.FlatList
         data={todos}
         renderItem={renderItems}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{flexGrow:1}}
+        itemLayoutAnimation={LinearTransition}
+        keyboardDismissMode="on-drag"
         />
+        <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'}/>
     </SafeAreaProvider>
   );
 }
